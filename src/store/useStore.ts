@@ -9,6 +9,8 @@ interface StoreState {
   debt: DebtState
   ledger: LedgerEntry[]
   projectionEndDate: string
+  /** ISO time of the last change on this device, or null while still on sample data. */
+  updatedAt: string | null
 
   toggleEntryPaid: (id: string) => void
   updateEntry: (id: string, updates: { desc?: string; amount?: number }) => void
@@ -22,7 +24,19 @@ interface StoreState {
 
 const isNum = (v: unknown): v is number => typeof v === 'number' && Number.isFinite(v)
 const isDateKey = (v: unknown): v is string => typeof v === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(v)
+const isIsoTime = (v: unknown): v is string => typeof v === 'string' && !Number.isNaN(Date.parse(v))
 const BUCKETS = ['Fixed', 'Variable', 'Buffer', 'Income']
+const now = () => new Date().toISOString()
+
+/** Reads the "last updated" time out of backup text without importing it. */
+export function peekBackupTime(raw: string): string | null {
+  try {
+    const t = JSON.parse(raw)?.updatedAt
+    return isIsoTime(t) ? t : null
+  } catch {
+    return null
+  }
+}
 
 const initialAccount: AccountState = {
   liquidCash: 5000.0,
@@ -48,6 +62,7 @@ export const useStore = create<StoreState>()(
       debt: initialDebt,
       ledger: SEED_LEDGER,
       projectionEndDate: PROJECTION_END_DATE,
+      updatedAt: null,
 
       toggleEntryPaid: (id) => {
         const entry = get().ledger.find((e) => e.id === id)
@@ -59,6 +74,7 @@ export const useStore = create<StoreState>()(
         set((state) => ({
           ledger: state.ledger.map((e) => (e.id === id ? { ...e, isPaid: nowPaid } : e)),
           account: { ...state.account, liquidCash: state.account.liquidCash + sign * entry.amount },
+          updatedAt: now(),
         }))
       },
 
@@ -74,6 +90,7 @@ export const useStore = create<StoreState>()(
             e.id === id ? { ...e, desc: updates.desc ?? e.desc, amount: nextAmount } : e,
           ),
           account: { ...state.account, liquidCash: state.account.liquidCash + liquidCashDelta },
+          updatedAt: now(),
         }))
       },
 
@@ -90,6 +107,7 @@ export const useStore = create<StoreState>()(
         set((state) => ({
           ledger: [...state.ledger, entry],
           account: { ...state.account, liquidCash: state.account.liquidCash - amount },
+          updatedAt: now(),
         }))
       },
 
@@ -99,12 +117,17 @@ export const useStore = create<StoreState>()(
         set((state) => ({
           ledger: state.ledger.filter((e) => e.id !== id),
           account: { ...state.account, liquidCash: state.account.liquidCash + entry.amount },
+          updatedAt: now(),
         }))
       },
 
       exportData: () => {
-        const { account, debt, ledger } = get()
-        return JSON.stringify({ app: 'true-cash', version: 1, account, debt, ledger }, null, 2)
+        const { account, debt, ledger, updatedAt } = get()
+        return JSON.stringify(
+          { app: 'true-cash', version: 1, updatedAt: updatedAt ?? now(), account, debt, ledger },
+          null,
+          2,
+        )
       },
 
       importData: (raw) => {
@@ -145,13 +168,14 @@ export const useStore = create<StoreState>()(
         if (data?.app !== 'true-cash' || !accountOk || !debtOk || !ledgerOk) {
           return 'This does not look like True Cash data, so nothing was changed.'
         }
-        set({ account: a, debt: d, ledger: l })
+        set({ account: a, debt: d, ledger: l, updatedAt: isIsoTime(data.updatedAt) ? data.updatedAt : now() })
         return null
       },
 
-      setLiquidCash: (value) => set((state) => ({ account: { ...state.account, liquidCash: value } })),
+      setLiquidCash: (value) =>
+        set((state) => ({ account: { ...state.account, liquidCash: value }, updatedAt: now() })),
       setCreditCardBalance: (value) =>
-        set((state) => ({ account: { ...state.account, creditCardBalance: value } })),
+        set((state) => ({ account: { ...state.account, creditCardBalance: value }, updatedAt: now() })),
     }),
     {
       name: 'true-cash-store',
