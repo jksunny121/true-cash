@@ -2,7 +2,7 @@ import { create } from 'zustand'
 import { persist, createJSONStorage } from 'zustand/middleware'
 import { SEED_LEDGER, PROJECTION_END_DATE } from '../data/seedLedger'
 import { todayKey } from '../lib/engine'
-import type { AccountState, DebtState, LedgerEntry } from '../types'
+import type { AccountState, BucketType, DebtState, LedgerEntry } from '../types'
 
 interface StoreState {
   account: AccountState
@@ -13,7 +13,9 @@ interface StoreState {
   updatedAt: string | null
 
   toggleEntryPaid: (id: string) => void
-  updateEntry: (id: string, updates: { desc?: string; amount?: number }) => void
+  updateEntry: (id: string, updates: { desc?: string; amount?: number; date?: string }) => void
+  addEntries: (entries: Array<{ date: string; bucket: BucketType; desc: string; amount: number }>) => void
+  deleteEntry: (id: string) => void
   logSpend: (entry: { bucket: 'Variable' | 'Buffer'; desc: string; amount: number; date?: string }) => void
   deleteLoggedEntry: (id: string) => void
   setLiquidCash: (value: number) => void
@@ -53,7 +55,7 @@ const initialDebt: DebtState = {
 }
 
 let idCounter = 0
-const nextId = () => `logged-${Date.now()}-${idCounter++}`
+const nextId = (prefix = 'logged') => `${prefix}-${Date.now()}-${idCounter++}`
 
 export const useStore = create<StoreState>()(
   persist(
@@ -87,9 +89,28 @@ export const useStore = create<StoreState>()(
         const liquidCashDelta = entry.isPaid ? entry.amount - nextAmount : 0
         set((state) => ({
           ledger: state.ledger.map((e) =>
-            e.id === id ? { ...e, desc: updates.desc ?? e.desc, amount: nextAmount } : e,
+            e.id === id
+              ? { ...e, desc: updates.desc ?? e.desc, amount: nextAmount, date: updates.date ?? e.date }
+              : e,
           ),
           account: { ...state.account, liquidCash: state.account.liquidCash + liquidCashDelta },
+          updatedAt: now(),
+        }))
+      },
+
+      addEntries: (entries) => {
+        const added: LedgerEntry[] = entries.map((e) => ({ ...e, id: nextId('custom'), isPaid: false }))
+        set((state) => ({ ledger: [...state.ledger, ...added], updatedAt: now() }))
+      },
+
+      deleteEntry: (id) => {
+        const entry = get().ledger.find((e) => e.id === id)
+        if (!entry) return
+        // A paid entry's amount is already in liquidCash, so give it back.
+        const refund = entry.isPaid ? entry.amount : 0
+        set((state) => ({
+          ledger: state.ledger.filter((e) => e.id !== id),
+          account: { ...state.account, liquidCash: state.account.liquidCash + refund },
           updatedAt: now(),
         }))
       },

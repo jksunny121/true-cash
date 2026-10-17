@@ -2,6 +2,8 @@ import { useFinance } from '../lib/useFinance'
 import { formatCurrency, formatDateLong } from '../lib/format'
 import { Card, CardHeader } from './ui/Card'
 import { BucketBadge } from './ui/Badge'
+import { EditEntryDialog } from './EditEntryDialog'
+import { AddEntryDialog } from './AddEntryDialog'
 
 export function RollingRadar() {
   const { upcoming30, radarLowest, radarEnd } = useFinance()
@@ -10,6 +12,9 @@ export function RollingRadar() {
 
   return (
     <div className="flex flex-col gap-6">
+      <div className="flex justify-end">
+        <AddEntryDialog />
+      </div>
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <Card className="bg-surface-raised">
           <p className="text-sm font-medium uppercase tracking-wide text-text-muted">Lowest Projected Balance</p>
@@ -45,9 +50,12 @@ export function RollingRadar() {
                   <BucketBadge bucket={e.bucket} />
                   <span className="truncate text-sm text-text">{e.desc}</span>
                 </div>
-                <span className={'tabular text-sm shrink-0 ' + (e.amount < 0 ? 'text-positive' : 'text-text')}>
-                  {formatCurrency(e.amount)}
-                </span>
+                <div className="flex shrink-0 items-center gap-3">
+                  <span className={'tabular text-sm ' + (e.amount < 0 ? 'text-positive' : 'text-text')}>
+                    {formatCurrency(e.amount)}
+                  </span>
+                  <EditEntryDialog entry={e} />
+                </div>
               </li>
             ))}
           </ul>

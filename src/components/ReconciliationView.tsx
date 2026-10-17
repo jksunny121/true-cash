@@ -7,10 +7,11 @@ import { BucketBadge } from './ui/Badge'
 import { ProgressBar } from './ui/ProgressBar'
 import { Switch } from './ui/Switch'
 import { EditEntryDialog } from './EditEntryDialog'
+import { AddEntryDialog } from './AddEntryDialog'
 import { useStore } from '../store/useStore'
 
 export function ReconciliationView() {
-  const { ledger, account } = useFinance()
+  const { ledger, account, todayStr } = useFinance()
   const toggleEntryPaid = useStore((s) => s.toggleEntryPaid)
 
   const months = useMemo(() => {
@@ -20,6 +21,9 @@ export function ReconciliationView() {
 
   return (
     <div className="flex flex-col gap-6">
+      <div className="flex justify-end">
+        <AddEntryDialog />
+      </div>
       {months.map((monthKey) => {
         const entries = ledger
           .filter((e) => monthKeyOf(e.date) === monthKey)
@@ -75,12 +79,17 @@ export function ReconciliationView() {
                     <span className="w-11 shrink-0 text-xs text-text-muted">{formatDateShort(e.date)}</span>
                     <BucketBadge bucket={e.bucket} />
                     <span className="truncate text-sm text-text">{e.desc}</span>
+                    {!e.isPaid && e.date < todayStr && (
+                      <span className="shrink-0 rounded-full bg-warning/15 px-2 py-0.5 text-[10px] font-medium text-warning">
+                        Overdue
+                      </span>
+                    )}
                   </div>
                   <div className="flex shrink-0 items-center gap-3">
                     <span className={'tabular text-sm ' + (e.amount < 0 ? 'text-positive' : 'text-text')}>
                       {formatCurrency(e.amount)}
                     </span>
-                    {e.bucket !== 'Income' && <EditEntryDialog entry={e} />}
+                    <EditEntryDialog entry={e} />
                     {e.logged ? (
                       <span className="text-xs text-text-muted">logged</span>
                     ) : (

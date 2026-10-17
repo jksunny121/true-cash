@@ -8,7 +8,7 @@ export function DialogContent({ children }: { children: ReactNode }) {
   return (
     <DialogPrimitive.Portal>
       <DialogPrimitive.Overlay className="fixed inset-0 z-40 bg-black/60" />
-      <DialogPrimitive.Content className="fixed left-1/2 top-1/2 z-50 w-[calc(100%-2rem)] max-w-sm -translate-x-1/2 -translate-y-1/2 rounded-2xl border border-border bg-surface p-5 shadow-xl shadow-black/40 focus:outline-none">
+      <DialogPrimitive.Content className="fixed left-1/2 top-1/2 z-50 w-[calc(100%-2rem)] max-h-[90vh] max-w-sm -translate-x-1/2 -translate-y-1/2 overflow-y-auto rounded-2xl border border-border bg-surface p-5 shadow-xl shadow-black/40 focus:outline-none">
         {children}
       </DialogPrimitive.Content>
     </DialogPrimitive.Portal>
