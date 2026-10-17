@@ -3,6 +3,7 @@ import { peekBackupTime, useStore } from '../store/useStore'
 import { todayKey } from '../lib/engine'
 import { Card, CardHeader } from './ui/Card'
 import { Button } from './ui/Button'
+import { SecuritySettings } from './SecuritySettings'
 
 const formatTime = (iso: string) =>
   new Date(iso).toLocaleString('en-GB', { dateStyle: 'medium', timeStyle: 'short' })
@@ -85,6 +86,8 @@ export function DataManager() {
 
   return (
     <div className="flex flex-col gap-6">
+      <SecuritySettings />
+
       <Card>
         <CardHeader
           title="Back Up and Move Data"
